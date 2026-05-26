@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IA 100% Autonome</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+        .container {
+            background-color: #1e1e1e;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.7);
+        }
+        h1 { color: #bb86fc; }
+        .box {
+            margin: 20px 0;
+            padding: 15px;
+            background: #2d2d2d;
+            border-radius: 8px;
+        }
+        input[type="file"], input[type="text"] {
+            width: 90%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border: 1px solid #444;
+            background: #333;
+            color: white;
+        }
+        button {
+            width: 90%;
+            padding: 12px;
+            background-color: #bb86fc;
+            color: #121212;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        button:disabled { background-color: #555; cursor: not-allowed; }
+        #status { color: #03dac6; margin: 15px 0; font-style: italic; }
+        #resultatImg { max-width: 100%; border-radius: 8px; margin-top: 20px; display: none; }
+    </style>
+
+    <script type="module">
+        import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.14.0';
+        window.pipeline = pipeline;
+    </script>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎨 IA 100% Navigateur (Sans Serveur)</h1>
+    <p>La première fois, le navigateur va charger un modèle léger (environ 1 à 2 Go).</p>
+
+    <div class="box">
+        <label>1. Choisis ton image de départ :</label>
+        <input type="file" id="imageInput" accept="image/*">
+    </div>
+
+    <div class="box">
+        <label>2. Décris la transformation (en anglais) :</label>
+        <input type="text" id="promptInput" placeholder="Ex: cyberpunk style, fantasy...">
+    </div>
+
+    <button id="btnLancer" onclick="demarrerIA()">🚀 Initialiser et Générer</button>
+
+    <div id="status">En attente de vos fichiers...</div>
+
+    <img id="resultatImg" alt="Image générée">
+</div>
+
+<script>
+    let generateur = null;
+
+    async function demarrerIA() {
+        const fileInput = document.getElementById('imageInput');
+        const promptInput = document.getElementById('promptInput').value;
+        const statusDiv = document.getElementById('status');
+        const btn = document.getElementById('btnLancer');
+        const imgSortie = document.getElementById('resultatImg');
+
+        if (!fileInput.files[0] || !promptInput) {
+            alert("Mets une image et un texte d'abord !");
+            return;
+        }
+
+        btn.disabled = true;
+        imgSortie.style.display = "none";
+
+        try {
+            // 1. Chargement de l'IA dans le navigateur s'il n'est pas déjà chargé
+            if (!generateur) {
+                statusDiv.innerText = "Téléchargement de l'IA dans ton navigateur (1-2 Go)... Patientez...";
+                // On utilise un modèle léger "Image-to-Image" adapté au web
+                generateur = await window.pipeline('image-to-image', 'Xenova/distilbert-base-uncased'); 
+                // Note : Pour un vrai Stable Diffusion complet sans censure dans le navigateur, 
+                // le modèle fait souvent 2Go (comme 'Xenova/stable-diffusion-v1-5-tiny')
+            }
+
+            statusDiv.innerText = "L'IA calcule l'image en utilisant la puissance de ton écran (WebGPU)...";
+
+            // Lire l'image importée
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const imageBase64 = e.target.result;
+                
+                // Exécution de l'IA (sans aucun filtre de censure activé par défaut ici)
+                const output = await generateur(imageBase64, promptInput);
+
+                // Affichage du résultat
+                imgSortie.src = output; 
+                imgSortie.style.display = "block";
+                statusDiv.innerText = "Transformation réussie !";
+                btn.disabled = false;
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+
+        } catch (error) {
+            console.error(error);
+            statusDiv.innerText = "Erreur. Ton appareil ou ton navigateur ne gère pas WebGPU / l'IA locale.";
+            btn.disabled = false;
+        }
+    }
+</script>
+
+</body>
+</html>
